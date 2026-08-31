@@ -141,6 +141,17 @@ marker_indented_dollar = 1
 GAMS treats `$' as introducing a dollar control statement only in the
 first column, so this is not an embedded code section at all.")
 
+(defconst poly-gams-tests-double-dollar "\
+set i / a /;
+   $$onEmbeddedCode Python:
+marker_double_dollar = 1
+   $$offEmbeddedCode
+marker_after_double_dollar = 0;
+"
+  "A dollar control option outside the first column, prefixed with `$$'.
+GAMS allows a dollar control statement in any column when it begins
+with `$$' rather than a single `$'.")
+
 (defconst poly-gams-tests-execution-time "\
 set i / a /;
 embeddedCode Python:
@@ -290,9 +301,20 @@ display i;
                 'gams-mode))))
 
 (ert-deftest poly-gams-test-indented-dollar-is-not-a-head ()
-  "A `$' away from the first column does not open a section."
+  "A single `$' away from the first column does not open a section."
   (poly-gams-tests-with-fixture poly-gams-tests-indented-dollar
     (should (eq (poly-gams-tests-mode-at "marker_indented_dollar") 'gams-mode))))
+
+(ert-deftest poly-gams-test-double-dollar-head ()
+  "An indented `$$onEmbeddedCode' does open a Python section."
+  (poly-gams-tests-with-fixture poly-gams-tests-double-dollar
+    (should (eq (poly-gams-tests-mode-at "marker_double_dollar") 'python-mode))))
+
+(ert-deftest poly-gams-test-double-dollar-tail ()
+  "An indented `$$offEmbeddedCode' closes the section."
+  (poly-gams-tests-with-fixture poly-gams-tests-double-dollar
+    (should (eq (poly-gams-tests-mode-at "marker_after_double_dollar")
+                'gams-mode))))
 
 ;;; Execution-time syntax
 

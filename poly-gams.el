@@ -54,24 +54,35 @@
 (define-hostmode poly-gams-hostmode
   :mode 'gams-mode)
 
-(defvar poly-gams-head-regexp
-  "^\\(?:\\$[ \t]*on\\|[ \t]*\\(?:continue\\)?\\)embeddedcode[^ \t\n:]*[ \t:]+"
-  "Regular expression for the start part of embedded codes.
-Matches the compile time `$onEmbeddedCode[S|V][.tag]' and the execution
-time `embeddedCode[S|V][.tag]' and `continueEmbeddedCode[S|V][.tag]'.
-
-Two rules from the dollar control options documentation apply to the
-compile time form: whitespace is permitted between `$' and the option
-name, and the `$' has to sit in the first column.  Execution time
-statements are ordinary GAMS statements and may be indented.  See
+(defconst poly-gams--dollar-prefix-regexp
+  "\\(?:^\\$\\|\\$\\$\\)[ \t]*"
+  "Regexp matching the `$' of a dollar control option, up to its name.
+Three rules from the dollar control options documentation are encoded
+here.  A single `$' introduces a dollar control statement only in the
+first column.  A statement may sit in any other column if it begins
+with `$$' instead.  Whitespace is permitted between the `$' and the
+option name.  See
 https://www.gams.com/latest/docs/UG_DollarControlOptions.html")
 
+(defvar poly-gams-head-regexp
+  (concat "\\(?:" poly-gams--dollar-prefix-regexp "on"
+          "\\|^[ \t]*\\(?:continue\\)?\\)"
+          "embeddedcode[^ \t\n:]*[ \t:]+")
+  "Regular expression for the start part of embedded codes.
+Matches the compile time `$onEmbeddedCode[S|V][.tag]', with the `$'
+rules of `poly-gams--dollar-prefix-regexp', and the execution time
+`embeddedCode[S|V][.tag]' and `continueEmbeddedCode[S|V][.tag]'.  The
+latter are ordinary GAMS statements rather than dollar control options,
+so they may be indented and take no `$'.")
+
 (defvar poly-gams-tail-regexp
-  "^\\(?:\\$[ \t]*off\\|[ \t]*end\\|[ \t]*pause\\)embeddedcode.*"
+  (concat "\\(?:" poly-gams--dollar-prefix-regexp "off"
+          "\\|^[ \t]*\\(?:end\\|pause\\)\\)"
+          "embeddedcode.*")
   "Regular expression for the end part of embedded codes.
-Matches `$offEmbeddedCode[.tag]' at compile time, and
-`endEmbeddedCode[.tag]' and `pauseEmbeddedCode[.tag]' at execution
-time, under the same rules for `$' as `poly-gams-head-regexp'.")
+Matches `$offEmbeddedCode[.tag]' at compile time, under the `$' rules
+of `poly-gams--dollar-prefix-regexp', and `endEmbeddedCode[.tag]' and
+`pauseEmbeddedCode[.tag]' at execution time.")
 
 (defconst poly-gams--engine-mode-names
   '(("python"  . "python")
@@ -103,7 +114,8 @@ Group 1 is the engine name.  Covers the S and V variants and an
 optional `.tag' suffix.")
 
 (defconst poly-gams--opener-engine-regexp
-  (concat "^\\(?:\\$[ \t]*on\\|[ \t]*\\)" poly-gams--head-engine-regexp)
+  (concat "\\(?:" poly-gams--dollar-prefix-regexp "on\\|^[ \t]*\\)"
+          poly-gams--head-engine-regexp)
   "Regexp matching an embedded code opener that names its engine.
 Deliberately does not match a continuation, so that it can be used
 to recover the engine of a `continueEmbeddedCode' line, which
