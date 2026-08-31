@@ -130,7 +130,7 @@ AHEAD specifies the direction to search."
   :head-mode 'host
   :tail-mode 'host)
 
-;;;###autoload
+;;;###autoload (autoload 'poly-gams-mode "poly-gams" nil t)
 (define-polymode poly-gams-mode
   :hostmode 'poly-gams-hostmode
   :innermodes '(poly-gams-python-innermode
