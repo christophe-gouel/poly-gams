@@ -14,8 +14,14 @@ jobs:
       matrix:
         # Quoted so that YAML does not read the versions as floats, which
         # would turn a future "30.0" into "30".
+        #
+        # 26.1 is the floor: polymode declares (emacs "25") but calls `if-let*'
+        # in `pm--buffer-name', on the path taken whenever an indirect buffer is
+        # created, and `if-let*' only exists from Emacs 26 on.  On 25.1 the form
+        # compiles to a function call and every inner block dies with
+        # (invalid-function (bbuf (buffer-base-buffer))).
         emacs:
-          - "25.1"
+          - "26.1"
           - "27.1"
           - "snapshot"
     steps:
