@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      # Report every Emacs version rather than cancelling the others on the
+      # first failure.
+      fail-fast: false
+      matrix:
+        # Quoted so that YAML does not read the versions as floats, which
+        # would turn a future "30.0" into "30".
+        emacs:
+          - "25.1"
+          - "27.1"
+          - "snapshot"
+    steps:
+    - uses: purcell/setup-emacs@master
+      with:
+        version: ${{ matrix.emacs }}
+    - uses: actions/checkout@v4
+
+    # yaml-mode is an optional dependency, needed only by the embedded Connect
+    # tests; without it those tests skip themselves.
+    - name: Install dependencies
+      run: emacs -Q -l .github/workflows/init.el -batch
+                    --eval "(package-install 'polymode)"
+                    --eval "(package-install 'gams-mode)"
+                    --eval "(package-install 'yaml-mode)"
+
+    - name: Install package-lint
+      run: emacs -Q -l .github/workflows/init.el -batch
+                    --eval "(package-install 'package-lint)"
+
+    - name: Lint poly-gams
+      run: emacs -Q -l .github/workflows/init.el -batch
+                    -L .
+                    -f package-lint-batch-and-exit
+                    poly-gams.el
+
+    # `define-polymode' expands to the obsolete `easy-mmode-define-keymap' on
+    # Emacs 29 and later.  That warning originates in polymode, not here, and
+    # cannot be silenced at the call site, so obsolescence warnings are
+    # excluded instead of giving up `byte-compile-error-on-warn' altogether.
+    - name: Byte-compile
+      run: emacs -Q -l .github/workflows/init.el -batch
+                    -L .
+                    --eval "(setq byte-compile-error-on-warn t)"
+                    --eval "(setq byte-compile-warnings '(not obsolete))"
+                    -f batch-byte-compile
+                    poly-gams.el
+
+    - name: Test
+      run: emacs -Q -l .github/workflows/init.el -batch
+                    -L . -L test
+                    -l test/poly-gams-tests.el
+                    -f ert-run-tests-batch-and-exit
