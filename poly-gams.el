@@ -3,7 +3,7 @@
 ;; Author: Shiro Takeda
 ;; Maintainer: Shiro Takeda
 ;; Copyright (C) Shiro Takeda
-;; Version: 0.9
+;; Version: 1.0.0
 ;; First created: 2022-06-25
 ;; Package-Requires: ((emacs "26.1") (polymode "0.2.2") (gams-mode "6.12"))
 ;; URL: https://github.com/ShiroTakeda/poly-gams

@@ -1,6 +1,7 @@
 * poly-gams
 
 [[https://melpa.org/#/poly-gams][file:https://melpa.org/packages/poly-gams-badge.svg]]
+[[https://github.com/ShiroTakeda/poly-gams/actions/workflows/ci.yaml][file:https://github.com/ShiroTakeda/poly-gams/actions/workflows/ci.yaml/badge.svg]]
 
 =poly-gams= is an Emacs package that provides polymode support for GAMS (General Algebraic Modeling System), allowing for embedded Python and YAML code blocks within GAMS files. This package leverages [[https://polymode.github.io/][polymode]] to enable seamless multi-mode editing.
 
@@ -8,9 +9,15 @@
 - *GAMS Mode*: Syntax highlighting and editing support for GAMS code, inherited from [[https://github.com/ShiroTakeda/gams-mode][gams-mode]].
 - *Embedded Python*: Syntax highlighting and editing support for [[https://www.gams.com/latest/docs/UG_EmbeddedCode.html#UG_EmbeddedCode_Python][Python code blocks]] embedded within GAMS files.
 - *Embedded YAML*: Syntax highlighting and editing support for YAML code blocks embedded within GAMS files and used by [[https://www.gams.com/latest/docs/UG_GAMSCONNECT.html][GAMS Connect]].
-- *Embedded GAMS and ReSHOP*: sections for engines without a dedicated mode keep GAMS highlighting, and no longer interfere with the Python and Connect sections around them.
+- *Embedded GAMS and ReSHOP*: sections for engines that have no dedicated mode keep GAMS highlighting, without affecting the Python and Connect sections around them.
 
-The mode used inside a block is whichever one your Emacs already uses for the corresponding file type, resolved through =major-mode-remap-alist= and =auto-mode-alist=, so the tree-sitter modes are picked up automatically. Python needs nothing beyond Emacs itself; for Connect blocks, install [[https://github.com/yoshiki/yaml-mode][yaml-mode]] or a YAML tree-sitter grammar. Neither is a hard dependency.
+Every form of the embedded code syntax is recognized: the compile time =$onEmbeddedCode= and its =S= and =V= variants, the execution time =embeddedCode=, =pauseEmbeddedCode= and =continueEmbeddedCode=, optional =.tag= suffixes, and options written as =$$onEmbeddedCode= outside the first column.
+
+** Requirements
+
+- Emacs 26.1 or later.
+- [[https://polymode.github.io/][polymode]] and [[https://github.com/ShiroTakeda/gams-mode][gams-mode]], both installed automatically as dependencies.
+- Optionally, a YAML mode for embedded Connect blocks: either [[https://github.com/yoshiki/yaml-mode][yaml-mode]] or a YAML tree-sitter grammar for the built-in =yaml-ts-mode=. Neither is a hard dependency, and without one the Connect blocks simply keep GAMS highlighting.
 
 ** Installation
 
@@ -32,15 +39,25 @@ Once installed, =poly-gams= will automatically activate for files with the =.gms
 
 *** Keybindings
 
-=poly-gams= inherits keybindings from =polymode=, =gams-mode=, =python-mode=, and =yaml-mode=. Refer to the respective mode documentation for more information.
+=poly-gams= inherits keybindings from =polymode=, =gams-mode=, and whichever modes are used inside the blocks. Refer to the respective mode documentation for more information.
 
 ** Customization
 
-Currently, =poly-gams= does not expose customizable variables. The package is designed to work out of the box for most use cases. Refer to =polymode=, =gams-mode=, =python-mode=, and =yaml-mode= for customization.
+=poly-gams= exposes no customizable variables of its own, but the mode used inside a block is not hardcoded. The engine named on the head line is mapped to a mode /name/, which polymode resolves through =polymode-mode-name-aliases=, =major-mode-remap-alist= and =auto-mode-alist=. Whichever mode your Emacs already uses for =.py= and =.yaml= files is therefore used inside Python and Connect blocks, the tree-sitter modes included, without configuring anything here.
+
+For the rest, refer to the customization of =polymode=, =gams-mode=, and the modes used inside the blocks.
+
+** Known limitations
+
+- Embedded code syntax inside a =$onText= comment block, or inside a redirection such as =$onEcho=, is treated as a real section. The text keeps its GAMS comment highlighting, so the consequences are limited to indentation and to commands such as =M-;= behaving as they would in the inner mode.
+- =continueEmbeddedCode handle:= resumes the section that =handle= refers to, which is a run time value and cannot be known while editing. =poly-gams= assumes the nearest opener above, which is correct for the usual pause and continue pattern.
+- A dollar control option reached through a conditional, as in =$if exist f $onEmbeddedCode Python:=, is not recognized. GAMS treats the second =$= as if it were in the first column.
 
 ** Contributing
 
 Contributions are welcome! If you find a bug or have a feature request, please open an issue on the GitHub repository. Pull requests are also appreciated.
+
+The test suite is run with =make test=, and needs the dependencies installed. It checks the mode assigned inside embedded code sections against the [[https://www.gams.com/latest/docs/UG_EmbeddedCode.html][GAMS embedded code documentation]]. Please add a case to =test/poly-gams-tests.el= along with a fix.
 
 ** License
 
