@@ -8,6 +8,9 @@
 - *GAMS Mode*: Syntax highlighting and editing support for GAMS code, inherited from [[https://github.com/ShiroTakeda/gams-mode][gams-mode]].
 - *Embedded Python*: Syntax highlighting and editing support for [[https://www.gams.com/latest/docs/UG_EmbeddedCode.html#UG_EmbeddedCode_Python][Python code blocks]] embedded within GAMS files.
 - *Embedded YAML*: Syntax highlighting and editing support for YAML code blocks embedded within GAMS files and used by [[https://www.gams.com/latest/docs/UG_GAMSCONNECT.html][GAMS Connect]].
+- *Embedded GAMS and ReSHOP*: sections for engines without a dedicated mode keep GAMS highlighting, and no longer interfere with the Python and Connect sections around them.
+
+The mode used inside a block is whichever one your Emacs already uses for the corresponding file type, resolved through =major-mode-remap-alist= and =auto-mode-alist=, so the tree-sitter modes are picked up automatically. Python needs nothing beyond Emacs itself; for Connect blocks, install [[https://github.com/yoshiki/yaml-mode][yaml-mode]] or a YAML tree-sitter grammar. Neither is a hard dependency.
 
 ** Installation
 

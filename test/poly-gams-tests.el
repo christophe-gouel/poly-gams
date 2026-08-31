@@ -31,6 +31,7 @@
 ;;; Code:
 
 (require 'ert)
+(require 'seq)
 (require 'yaml-mode nil t)              ; optional dependency
 (require 'poly-gams)
 
@@ -50,10 +51,16 @@ creates, so no further cleanup is needed."
            ,@body)
        (kill-buffer buffer))))
 
+(defconst poly-gams-tests-yaml-modes '(yaml-mode yaml-ts-mode)
+  "Modes that count as \"YAML\" when checking a Connect section.
+Which one is installed is up to the user: poly-gams asks polymode
+to resolve the name \"yaml\", which consults
+`major-mode-remap-alist' and `auto-mode-alist'.")
+
 (defun poly-gams-tests-skip-unless-yaml ()
   "Skip the current test unless a YAML mode is available."
-  (unless (fboundp 'yaml-mode)
-    (ert-skip "yaml-mode is unavailable; it is an optional dependency")))
+  (unless (seq-some #'fboundp poly-gams-tests-yaml-modes)
+    (ert-skip "no YAML mode available; it is an optional dependency")))
 
 (defun poly-gams-tests--goto-marker (marker)
   "Move point to the beginning of MARKER, or signal an error.
@@ -144,6 +151,36 @@ endEmbeddedCode
 display i;
 "
   "A paused and continued Python section, with host code in between.")
+
+(defconst poly-gams-tests-continue-handle "\
+set i / a /;
+EmbeddedCode Python:
+marker_paused = 1
+pauseEmbeddedCode
+scalar handle;
+handle = embeddedHandle;
+continueEmbeddedCode handle:
+marker_after_handle = 1
+endEmbeddedCode
+display i;
+"
+  "A Python section resumed through an explicit handle.
+The word before the colon on a continuation is a handle, not an
+engine name.  Taken from EMBPY04 in the GAMS test library.")
+
+(defconst poly-gams-tests-continue-gams-engine "\
+set i / a /;
+embeddedCode GAMS: args
+marker_gams_paused = 0;
+pauseEmbeddedCode
+display i;
+continueEmbeddedCode GAMS:
+marker_gams_continued = 0;
+endEmbeddedCode
+"
+  "A GAMS-engine section resumed with the engine named again.
+Here the word before the colon really is an engine, and it is one
+without a dedicated inner mode.")
 
 (defconst poly-gams-tests-connect "\
 set i / a /;
@@ -261,13 +298,25 @@ display i;
   (poly-gams-tests-with-fixture poly-gams-tests-pause-continue
     (should (eq (poly-gams-tests-mode-at "marker_after_continue") 'python-mode))))
 
+(ert-deftest poly-gams-test-continue-with-handle ()
+  "A handle on a continuation is not mistaken for an engine name."
+  (poly-gams-tests-with-fixture poly-gams-tests-continue-handle
+    (should (eq (poly-gams-tests-mode-at "marker_after_handle") 'python-mode))))
+
+(ert-deftest poly-gams-test-continue-with-gams-engine ()
+  "`continueEmbeddedCode GAMS:' resumes a section that stays host."
+  (poly-gams-tests-with-fixture poly-gams-tests-continue-gams-engine
+    (should (eq (poly-gams-tests-mode-at "marker_gams_paused") 'gams-mode))
+    (should (eq (poly-gams-tests-mode-at "marker_gams_continued") 'gams-mode))))
+
 ;;; Connect
 
 (ert-deftest poly-gams-test-connect-is-yaml ()
   "`embeddedCode Connect:' bodies use the YAML mode."
   (poly-gams-tests-skip-unless-yaml)
   (poly-gams-tests-with-fixture poly-gams-tests-connect
-    (should (eq (poly-gams-tests-mode-at "marker_connect") 'yaml-mode))))
+    (should (memq (poly-gams-tests-mode-at "marker_connect")
+                  poly-gams-tests-yaml-modes))))
 
 ;;; Case folding
 
@@ -291,11 +340,10 @@ display i;
 
 ;;; GAMS engine sections must not hide later sections
 
-;; These two are known to fail: when a head matcher meets a section whose engine
-;; it does not handle, it returns nil, which polymode reads as "no inner span
-;; anywhere ahead".  It then caches a host span reaching to the end of the
-;; buffer, so a single `embeddedCode GAMS:' section disables Python and Connect
-;; highlighting for everything below it.  The bug only shows up when spans are
+;; A section whose engine has no dedicated inner mode used to hide every
+;; section after it: the per-engine head matcher returned nil, which polymode
+;; reads as "no inner span anywhere ahead", and it then cached a host span
+;; reaching to the end of the buffer.  The bug only showed up when spans were
 ;; computed forwards from the top, which is what display does.
 
 (ert-deftest poly-gams-test-gams-engine-body-is-host ()
@@ -305,18 +353,16 @@ display i;
 
 (ert-deftest poly-gams-test-python-after-gams-engine ()
   "A Python section following a GAMS-engine section is still Python."
-  :expected-result :failed
   (poly-gams-tests-with-fixture poly-gams-tests-gams-engine-first
     (should (eq (poly-gams-tests-mode-at "marker_python_after_gams")
                 'python-mode))))
 
 (ert-deftest poly-gams-test-connect-after-gams-engine ()
   "A Connect section following a GAMS-engine section is still YAML."
-  :expected-result :failed
   (poly-gams-tests-skip-unless-yaml)
   (poly-gams-tests-with-fixture poly-gams-tests-gams-engine-first
-    (should (eq (poly-gams-tests-mode-at "marker_connect_after_gams")
-                'yaml-mode))))
+    (should (memq (poly-gams-tests-mode-at "marker_connect_after_gams")
+                  poly-gams-tests-yaml-modes))))
 
 ;;; Comment awareness
 
