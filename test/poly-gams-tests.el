@@ -121,6 +121,26 @@ display i;
 "
   "Compile-time embedded code: plain, S and V variants, and a tag.")
 
+(defconst poly-gams-tests-spaced-dollar "\
+set i / a /;
+$ onEmbeddedCode Python:
+marker_spaced_dollar = 1
+$ offEmbeddedCode
+marker_after_spaced_dollar = 0;
+"
+  "A compile time section with whitespace after the `$'.
+GAMS permits whitespace between `$' and the option name.")
+
+(defconst poly-gams-tests-indented-dollar "\
+set i / a /;
+  $onEmbeddedCode Python:
+marker_indented_dollar = 1
+  $offEmbeddedCode
+"
+  "A dollar control option that is not in the first column.
+GAMS treats `$' as introducing a dollar control statement only in the
+first column, so this is not an embedded code section at all.")
+
 (defconst poly-gams-tests-execution-time "\
 set i / a /;
 embeddedCode Python:
@@ -257,6 +277,22 @@ display i;
   "A `.tag' suffix does not prevent recognition."
   (poly-gams-tests-with-fixture poly-gams-tests-compile-time
     (should (eq (poly-gams-tests-mode-at "marker_on_tag") 'python-mode))))
+
+(ert-deftest poly-gams-test-spaced-dollar-head ()
+  "`$ onEmbeddedCode Python:' opens a Python section."
+  (poly-gams-tests-with-fixture poly-gams-tests-spaced-dollar
+    (should (eq (poly-gams-tests-mode-at "marker_spaced_dollar") 'python-mode))))
+
+(ert-deftest poly-gams-test-spaced-dollar-tail ()
+  "`$ offEmbeddedCode' closes the section."
+  (poly-gams-tests-with-fixture poly-gams-tests-spaced-dollar
+    (should (eq (poly-gams-tests-mode-at "marker_after_spaced_dollar")
+                'gams-mode))))
+
+(ert-deftest poly-gams-test-indented-dollar-is-not-a-head ()
+  "A `$' away from the first column does not open a section."
+  (poly-gams-tests-with-fixture poly-gams-tests-indented-dollar
+    (should (eq (poly-gams-tests-mode-at "marker_indented_dollar") 'gams-mode))))
 
 ;;; Execution-time syntax
 
