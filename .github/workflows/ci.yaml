@@ -24,6 +24,20 @@ jobs:
         version: ${{ matrix.emacs }}
     - uses: actions/checkout@v4
 
+    # The gams-mode release on MELPA cannot be loaded on a machine without GAMS
+    # installed.  It derives `gams-system-directory' from
+    # (file-name-directory (executable-find "gams")), which is nil on a runner,
+    # and `gams-docs-directory' then calls `file-name-as-directory' on that nil,
+    # signalling (wrong-type-argument stringp nil).  A stub on PATH is enough to
+    # get past it, and it also makes the run resemble a real user's machine,
+    # where GAMS is present.  Nothing here ever executes GAMS.
+    - name: Stub the gams executable
+      run: |
+        mkdir -p "$HOME/gams-stub"
+        printf '#!/bin/sh\nexit 0\n' > "$HOME/gams-stub/gams"
+        chmod +x "$HOME/gams-stub/gams"
+        echo "$HOME/gams-stub" >> "$GITHUB_PATH"
+
     # yaml-mode is an optional dependency, needed only by the embedded Connect
     # tests; without it those tests skip themselves.
     - name: Install dependencies
